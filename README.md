@@ -1,2 +1,3 @@
 # TS
-Simple proof minimax optimal thompson sampling.
+Simple proof of minimax optimal thompson sampling.
+![TS variants]("TS++.png")
