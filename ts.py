@@ -32,6 +32,7 @@ class TS:
         self.mu_ground_truth = mu_ground_truth
         self.mu = np.ones(self.N)*init_mu
         self.T = np.zeros(self.N)
+        self._initialization()
 
     def _pull_posterior(self, i):
         if self.distribution == "Gaussian":
@@ -218,6 +219,29 @@ class ExpTS(TS):
             else:
                 thetas[i] = min(sy.solve(0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
         return np.argmax(thetas)
+
+class ExpTS_plus(TS):
+    '''with prob probability'''
+    def __init__(self, N, mu_ground_truth, distribution, prob, init_mu=0):
+        super().__init__(N, mu_ground_truth, distribution, init_mu)
+        self.prob = prob
+    
+    def _choose_arm(self):
+        thetas = np.zeros(self.N)
+        for i in range(self.N):
+            p = np.random.random_sample()
+            if p<1./self.N:
+                x = sy.symbols("x")
+                kl = kl_div(self.distribution, self.mu[i], x)
+                y = np.random.random_sample()
+                if y>= .5:
+                    thetas[i] = max(sy.solve(1-0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
+                else:
+                    thetas[i] = min(sy.solve(0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
+            else:
+                thetas[i] = self.mu[i]
+        return np.argmax(thetas)
+
 
 
 
