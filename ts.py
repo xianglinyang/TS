@@ -3,6 +3,21 @@ import time
 import matplotlib.pyplot as plt
 from math import e
 
+
+def find_mu(distribution, mu, upper, T):
+    if distribution == "Gaussian":
+        # assume sigma==1
+        return np.sqrt(2*upper/T)+mu
+    elif distribution == "Berboulli":
+        pass
+    elif distribution == "Poisson":
+        pass
+    elif distribution == "Exponential":
+        pass
+    else:
+        raise NotImplementedError
+
+
 class TS:
     def __init__(self, N, mu_ground_truth, distribution, init_mu=0):
         self.N = N
@@ -36,6 +51,7 @@ class TS:
             raise NotImplementedError
 
     def _update_posterior(self, i, reward):
+        # reward mean
         self.mu[i] = (self.mu[i]*self.T[i]+reward)/(self.T[i]+1)
         self.T[i] = self.T[i]+1
     
@@ -102,6 +118,14 @@ class TS_Greedy(TS):
         return np.argmax(curr_thetas)
 
 class KL_UCB_plus_plus(TS):
+
+    def _choose_arm(self, T):
+        U_upper = np.max(np.log((np.power(np.max(np.log(T/(self.N*self.T)),0),2)+1)*T/(self.N*self.T)),0)
+        curr_u = np.zeros(self.N)
+        for i in range(self.N):
+            # find mu kl(self.mu[i], mu)<=U_upper[i]/self.T[i]
+            curr_u[i] = find_mu(self.distribution, self.mu[i], U_upper, self.T[i])
+        return np.argmax(curr_u)
     
 
         
@@ -149,56 +173,6 @@ if __name__ == "__main__":
         regret = regret_line + regret
     regret = regret / repeat
     print("TS Greedy mean regret is {:.3f}".format(mean_regret.mean()))
-
-    line2 = plt.plot(record_time, regret, 'ro--', linewidth=1, markersize=4, label="TS Greedy")
-
-    # ----------TS plus---------
-    mean_regret = np.zeros(repeat)
-    regret = np.zeros(int(T/period))
-    for i in range(repeat):
-        ts = TS_plus(N, mu_gt)
-        mean_regret[i], regret_line = ts.regret(T, period)
-        regret = regret + regret_line
-    regret = regret / repeat
-    print("TS+ mean regret is {:.3f}".format(mean_regret.mean()))
-    
-    line3 = plt.plot(record_time, regret, 'bo--', linewidth=1, markersize=4, label="TS+")
-
-    # ----------TS Greedy plus---------
-    mean_regret = np.zeros(repeat)
-    regret = np.zeros(int(T/period))
-    for i in range(repeat):
-        ts = TS_Greedy_plus(N, mu_gt)
-        mean_regret[i],regret_line = ts.regret(T, prob, period)
-        regret = regret_line + regret
-    regret = regret / repeat
-    print("TS Greedy+ mean regret is {:.3f}".format(mean_regret.mean()))
-
-    line4 = plt.plot(record_time, regret, 'mo--', linewidth=1, markersize=4, label="TS Greedy+")
-
-    # ----------TS plusplus---------
-    mean_regret = np.zeros(repeat)
-    regret = np.zeros(int(T/period))
-    for i in range(repeat):
-        ts = TS_plusplus(N, mu_gt)
-        mean_regret[i], regret_line = ts.regret(T, period)
-        regret = regret + regret_line
-    regret = regret / repeat
-    print("TS++ mean regret is {:.3f}".format(mean_regret.mean()))
-    
-    line5 = plt.plot(record_time, regret, 'yo--', linewidth=1, markersize=4, label="TS++")
-
-    # ----------TS Greedy plusplus---------
-    mean_regret = np.zeros(repeat)
-    regret = np.zeros(int(T/period))
-    for i in range(repeat):
-        ts = TS_Greedy_plusplus(N, mu_gt)
-        mean_regret[i],regret_line = ts.regret(T, prob, period)
-        regret = regret_line + regret
-    regret = regret / repeat
-    print("TS Greedy++ mean regret is {:.3f}".format(mean_regret.mean()))
-
-    line6 = plt.plot(record_time, regret, 'co--', linewidth=1, markersize=4, label="TS Greedy++")
 
     plt.legend()
     plt.savefig("TS+.png")
