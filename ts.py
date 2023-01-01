@@ -1,22 +1,23 @@
 import numpy as np
 import time
+import sympy as sy
 import matplotlib.pyplot as plt
 from math import e
 
 
 def find_mu(distribution, mu, upper, T):
+    x = sy.symbols("x")
     if distribution == "Gaussian":
-        # assume sigma==1
-        return np.sqrt(2*upper/T)+mu
+        results = sy.solve(T/2*(mu-x)**2-upper,x)
     elif distribution == "Berboulli":
-        pass
+        results = sy.solve(T*(mu*sy.log(mu/x)+(1-mu)*sy.log((1-mu)/(1-x)))-upper, x)
     elif distribution == "Poisson":
-        pass
+        results = sy.solve(T*(mu*sy.log(mu/x)-mu+x)-upper, x)
     elif distribution == "Exponential":
-        pass
+        results = sy.solve(T*(sy.log(mu/x)-(mu-x)/mu)-upper, x)
     else:
         raise NotImplementedError
-
+    return max(results)
 
 class TS:
     def __init__(self, N, mu_ground_truth, distribution, init_mu=0):
@@ -40,7 +41,7 @@ class TS:
 
     def _pull_posterior(self, i):
         if self.distribution == "Gaussian":
-            return np.random.normal(self.mu[i], np.sqrt(self.sigma[i]), 1)[0]
+            return np.random.normal(self.mu[i], np.sqrt(1/self.T[i]), 1)[0]
         elif self.distribution == "Berboulli":
             pass
         elif self.distribution == "Poisson":
@@ -81,18 +82,18 @@ class TS:
     
     def _pull_arm(self, i):
         if self.distribution == "Gaussian":
-            return np.random.normal(self.mu_gt[i], 1, 1)[0]
+            return np.random.normal(self.mu_ground_truth[i], 1, 1)[0]
         elif self.distribution == "Berboulli":
-            pass
+            return np.random.binomial(1, self.mu_ground_truth[i], 1)[0]
         elif self.distribution == "Poisson":
-            pass
+            return np.random.poisson(self.mu_ground_truth[i], 1)[0]
         elif self.distribution == "Exponential":
-            pass
+            return np.random.exponential(self.mu_ground_truth[i], 1)[0]
         else:
             raise NotImplementedError
     
     def regret(self, T, period):
-        mu_max = np.max(self.mu_gt)
+        mu_max = np.max(self.mu_ground_truth)
         regrets_plot = np.zeros(int(T/period))
         regret = 0
         for t in range(self.N+1, T+1, 1):
@@ -100,7 +101,7 @@ class TS:
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
             
-            regret = regret + mu_max - self.mu_gt[i]
+            regret = regret + mu_max - self.mu_ground_truth[i]
             
             if t % period == 0:
                 regrets_plot[t//period] = regret
@@ -133,7 +134,7 @@ class KL_UCB_plus_plus(TS):
         return np.argmax(curr_u)
     
     def regret(self, T, period):
-        mu_max = np.max(self.mu_gt)
+        mu_max = np.max(self.mu_ground_truth)
         regrets_plot = np.zeros(int(T/period))
         regret = 0
         for t in range(self.N+1, T+1, 1):
@@ -141,7 +142,7 @@ class KL_UCB_plus_plus(TS):
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
             
-            regret = regret + mu_max - self.mu_gt[i]
+            regret = regret + mu_max - self.mu_ground_truth[i]
             
             if t % period == 0:
                 regrets_plot[t//period] = regret
@@ -158,7 +159,7 @@ class KL_UCB(TS):
         return np.argmax(curr_u)
     
     def regret(self, T, period):
-        mu_max = np.max(self.mu_gt)
+        mu_max = np.max(self.mu_ground_truth)
         regrets_plot = np.zeros(int(T/period))
         regret = 0
         for t in range(self.N+1, T+1, 1):
@@ -166,7 +167,7 @@ class KL_UCB(TS):
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
             
-            regret = regret + mu_max - self.mu_gt[i]
+            regret = regret + mu_max - self.mu_ground_truth[i]
             
             if t % period == 0:
                 regrets_plot[t//period] = regret
@@ -191,7 +192,7 @@ class MOTS(TS):
         return np.argmax(curr_thetas)
     
     def regret(self, T, period):
-        mu_max = np.max(self.mu_gt)
+        mu_max = np.max(self.mu_ground_truth)
         regrets_plot = np.zeros(int(T/period))
         regret = 0
         for t in range(self.N+1, T+1, 1):
@@ -199,7 +200,7 @@ class MOTS(TS):
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
             
-            regret = regret + mu_max - self.mu_gt[i]
+            regret = regret + mu_max - self.mu_ground_truth[i]
             
             if t % period == 0:
                 regrets_plot[t//period] = regret
