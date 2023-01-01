@@ -5,19 +5,25 @@ import matplotlib.pyplot as plt
 from math import e
 
 
-def find_mu(distribution, mu, upper, T):
-    x = sy.symbols("x")
+def kl_div(distribution, mu, x):
+    '''the symbolic expression of kl divergence'''
     if distribution == "Gaussian":
-        results = sy.solve(T/2*(mu-x)**2-upper,x)
+        kl = 1/2*(mu-x)**2
     elif distribution == "Berboulli":
-        results = sy.solve(T*(mu*sy.log(mu/x)+(1-mu)*sy.log((1-mu)/(1-x)))-upper, x)
+        kl = mu*sy.log(mu/x)+(1-mu)*sy.log((1-mu)/(1-x))
     elif distribution == "Poisson":
-        results = sy.solve(T*(mu*sy.log(mu/x)-mu+x)-upper, x)
+        kl = mu*sy.log(mu/x)-mu+x
     elif distribution == "Exponential":
-        results = sy.solve(T*(sy.log(mu/x)-(mu-x)/mu)-upper, x)
+        kl = sy.log(mu/x)-(mu-x)/mu
     else:
         raise NotImplementedError
+    return kl
+
+
+def find_mu(x, kl, upper, T):
+    results = sy.solve(T*kl-upper, x)
     return max(results)
+
 
 class TS:
     def __init__(self, N, mu_ground_truth, distribution, init_mu=0):
@@ -118,7 +124,9 @@ class KL_UCB_plus_plus(TS):
         curr_u = np.zeros(self.N)
         for i in range(self.N):
             # find mu kl(self.mu[i], mu)<=U_upper[i]/self.T[i]
-            curr_u[i] = find_mu(self.distribution, self.mu[i], U_upper, self.T[i])
+            x = sy.symbols("x")
+            kl = kl_div(self.distribution, self.mu[i], x)
+            curr_u[i] = find_mu(x, kl, upper=U_upper, T=self.T[i])
         return np.argmax(curr_u)
     
     def regret(self, T, period):
@@ -143,7 +151,9 @@ class KL_UCB(TS):
         curr_u = np.zeros(self.N)
         for i in range(self.N):
             # find mu kl(self.mu[i], mu)<=U_upper[i]/self.T[i]
-            curr_u[i] = find_mu(self.distribution, self.mu[i], U_upper, self.T[i])
+            x = sy.symbols("x")
+            kl = kl_div(self.distribution, self.mu[i], x)
+            curr_u[i] = find_mu(x, kl, upper=U_upper, T=self.T[i])
         return np.argmax(curr_u)
     
     def regret(self, T, period):
@@ -193,6 +203,22 @@ class MOTS(TS):
             if t % period == 0:
                 regrets_plot[t//period] = regret
         return regret, regrets_plot
+
+
+class ExpTS(TS):
+    def _choose_arm(self):
+        thetas = np.zeros(self.N)
+        for i in range(self.N):
+            x = sy.symbols("x")
+            kl = kl_div(self.distribution, self.mu[i], x)
+            
+            y = np.random.random_sample()
+            if y>= .5:
+                thetas[i] = max(sy.solve(1-0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
+            else:
+                thetas[i] = min(sy.solve(0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
+        return np.argmax(thetas)
+
 
 
         
