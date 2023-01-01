@@ -26,18 +26,6 @@ class TS:
         self.mu_ground_truth = mu_ground_truth
         self.mu = np.ones(self.N)*init_mu
         self.T = np.zeros(self.N)
-    
-    def _init_prior(self):
-        if self.distribution == "Gaussian":
-            pass
-        elif self.distribution == "Berboulli":
-            pass
-        elif self.distribution == "Poisson":
-            pass
-        elif self.distribution == "Exponential":
-            pass
-        else:
-            raise NotImplementedError
 
     def _pull_posterior(self, i):
         if self.distribution == "Gaussian":
@@ -206,9 +194,6 @@ class MOTS(TS):
                 regrets_plot[t//period] = regret
         return regret, regrets_plot
 
-
-
-    
 
         
 if __name__ == "__main__":
