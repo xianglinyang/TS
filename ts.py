@@ -49,6 +49,11 @@ class TS:
             pass
         else:
             raise NotImplementedError
+    
+    def _initialization(self):
+        for i in range(self.N):
+            reward = self._pull_arm(i)
+            self._update_posterior(i, reward)
 
     def _update_posterior(self, i, reward):
         # reward mean
@@ -90,7 +95,7 @@ class TS:
         mu_max = np.max(self.mu_gt)
         regrets_plot = np.zeros(int(T/period))
         regret = 0
-        for t in range(1, T+1, 1):
+        for t in range(self.N+1, T+1, 1):
             i = self._choose_arm()
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
@@ -126,6 +131,49 @@ class KL_UCB_plus_plus(TS):
             # find mu kl(self.mu[i], mu)<=U_upper[i]/self.T[i]
             curr_u[i] = find_mu(self.distribution, self.mu[i], U_upper, self.T[i])
         return np.argmax(curr_u)
+    
+    def regret(self, T, period):
+        mu_max = np.max(self.mu_gt)
+        regrets_plot = np.zeros(int(T/period))
+        regret = 0
+        for t in range(self.N+1, T+1, 1):
+            i = self._choose_arm(T)
+            reward = self._pull_arm(i)
+            self._update_posterior(i, reward)
+            
+            regret = regret + mu_max - self.mu_gt[i]
+            
+            if t % period == 0:
+                regrets_plot[t//period] = regret
+        return regret, regrets_plot
+
+class KL_UCB(TS):
+
+    def _choose_arm(self, t):
+        U_upper = np.log(t)+3*np.log(np.log(t))
+        curr_u = np.zeros(self.N)
+        for i in range(self.N):
+            # find mu kl(self.mu[i], mu)<=U_upper[i]/self.T[i]
+            curr_u[i] = find_mu(self.distribution, self.mu[i], U_upper, self.T[i])
+        return np.argmax(curr_u)
+    
+    def regret(self, T, period):
+        mu_max = np.max(self.mu_gt)
+        regrets_plot = np.zeros(int(T/period))
+        regret = 0
+        for t in range(self.N+1, T+1, 1):
+            i = self._choose_arm(t)
+            reward = self._pull_arm(i)
+            self._update_posterior(i, reward)
+            
+            regret = regret + mu_max - self.mu_gt[i]
+            
+            if t % period == 0:
+                regrets_plot[t//period] = regret
+        return regret, regrets_plot
+
+
+
     
 
         
