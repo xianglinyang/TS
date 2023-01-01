@@ -125,7 +125,7 @@ class TS_Greedy(TS):
 class KL_UCB_plus_plus(TS):
 
     def _choose_arm(self, T):
-        U_upper = np.max(np.log((np.power(np.max(np.log(T/(self.N*self.T)),0),2)+1)*T/(self.N*self.T)),0)
+        U_upper = np.maximum(np.log((np.power(np.maximum(np.log(T/(self.N*self.T)),0),2)+1)*T/(self.N*self.T)),0)
         curr_u = np.zeros(self.N)
         for i in range(self.N):
             # find mu kl(self.mu[i], mu)<=U_upper[i]/self.T[i]
@@ -163,6 +163,39 @@ class KL_UCB(TS):
         regret = 0
         for t in range(self.N+1, T+1, 1):
             i = self._choose_arm(t)
+            reward = self._pull_arm(i)
+            self._update_posterior(i, reward)
+            
+            regret = regret + mu_max - self.mu_gt[i]
+            
+            if t % period == 0:
+                regrets_plot[t//period] = regret
+        return regret, regrets_plot
+
+class MOTS(TS):
+    def _choose_arm(self, T):
+        if self.distribution == "Gaussian":
+            sigma = 1
+        elif self.distribution == "Berboulli":
+            sigma = 0.25
+        else:
+            raise NotImplementedError
+
+        thetas = np.zeros(self.N)
+        for i in range(self.N):
+            thetas[i] = np.random.normal(self.mu[i], sigma/0.9/self.T[i], 1)[0]
+
+        mus = self.mu+2/self.T*np.maximum(np.log(T/self.N*self.T),0)
+
+        curr_thetas = np.minimum(thetas, mus)
+        return np.argmax(curr_thetas)
+    
+    def regret(self, T, period):
+        mu_max = np.max(self.mu_gt)
+        regrets_plot = np.zeros(int(T/period))
+        regret = 0
+        for t in range(self.N+1, T+1, 1):
+            i = self._choose_arm(T)
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
             
