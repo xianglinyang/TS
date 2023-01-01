@@ -4,149 +4,107 @@ import matplotlib.pyplot as plt
 from math import e
 
 class TS:
-    def __init__(self, N, mu_gt, init_k=0, init_mu=0):
+    def __init__(self, N, mu_ground_truth, distribution, init_mu=0):
         self.N = N
-        self.mu_gt = mu_gt
-        self.init_k = init_k
-        self.init_mu = init_mu
+        self.distribution = distribution
+        self.mu_ground_truth = mu_ground_truth
+        self.mu = np.ones(self.N)*init_mu
+        self.T = np.zeros(self.N)
     
-    def init_arm(self):
-        self.mu = np.ones(self.N)*self.init_mu
-        self.k = np.ones(self.N)*self.init_k
-        self.sigma = np.ones(self.N)*(1/(self.init_k+1))
+    def _init_prior(self):
+        if self.distribution == "Gaussian":
+            pass
+        elif self.distribution == "Berboulli":
+            pass
+        elif self.distribution == "Poisson":
+            pass
+        elif self.distribution == "Exponential":
+            pass
+        else:
+            raise NotImplementedError
+
+    def _pull_posterior(self, i):
+        if self.distribution == "Gaussian":
+            return np.random.normal(self.mu[i], np.sqrt(self.sigma[i]), 1)[0]
+        elif self.distribution == "Berboulli":
+            pass
+        elif self.distribution == "Poisson":
+            pass
+        elif self.distribution == "Exponential":
+            pass
+        else:
+            raise NotImplementedError
+
+    def _update_posterior(self, i, reward):
+        self.mu[i] = (self.mu[i]*self.T[i]+reward)/(self.T[i]+1)
+        self.T[i] = self.T[i]+1
     
-    def choose_arm(self):
+    @property
+    def _mu_theta(self):
+        if self.distribution == "Gaussian":
+            return self.mu
+        elif self.distribution == "Berboulli":
+            return self.mu
+        elif self.distribution == "Poisson":
+            return self.mu
+        elif self.distribution == "Exponential":
+            return 1 / self.mu
+        else:
+            raise NotImplementedError
+
+    def _choose_arm(self):
         curr_thetas = np.zeros(self.N)
         for i in range(self.N):
-            curr_thetas[i] = np.random.normal(self.mu[i], np.sqrt(self.sigma[i]), 1)[0]
+            curr_thetas[i] = self._pull_posterior(i)
         return np.argmax(curr_thetas)
     
-    def update_arm(self, i, reward):
-        self.mu[i] = (self.mu[i]*self.k[i]+reward)/(self.k[i]+2)
-        self.k[i] = self.k[i]+1
-        self.sigma[i] = 1/(1+self.k[i])
-    
-    def pull_arm(self, i):
-        return np.random.normal(self.mu_gt[i], 1, 1)[0]
+    def _pull_arm(self, i):
+        if self.distribution == "Gaussian":
+            return np.random.normal(self.mu_gt[i], 1, 1)[0]
+        elif self.distribution == "Berboulli":
+            pass
+        elif self.distribution == "Poisson":
+            pass
+        elif self.distribution == "Exponential":
+            pass
+        else:
+            raise NotImplementedError
     
     def regret(self, T, period):
         mu_max = np.max(self.mu_gt)
-        self.init_arm()
-        regret = np.zeros(int(T/period))
-        r = 0
-
-        for t in range(T):
-            i = self.choose_arm()
-            reward = self.pull_arm(i)
-            r = r + mu_max -  self.mu_gt[i]
-            self.update_arm(i, reward)
+        regrets_plot = np.zeros(int(T/period))
+        regret = 0
+        for t in range(1, T+1, 1):
+            i = self._choose_arm()
+            reward = self._pull_arm(i)
+            self._update_posterior(i, reward)
+            
+            regret = regret + mu_max - self.mu_gt[i]
+            
             if t % period == 0:
-                regret[t//period] = r
-        return r, regret
+                regrets_plot[t//period] = regret
+        return regret, regrets_plot
 
 class TS_Greedy(TS):
+    '''with prob probability'''
+    def __init__(self, N, mu_ground_truth, distribution, prob, init_mu=0):
+        super().__init__(N, mu_ground_truth, distribution, init_mu)
+        self.prob = prob
 
-    def choose_arm(self, prob):
+    def _choose_arm(self):
         curr_thetas = np.zeros(self.N)
         for i in range(self.N):
-            # propability 1/N sample, (N-1)/N mu_i
             tmp = np.random.random_sample()
-            # tmp = np.random.choice(self.N, 1, replace=True)[0]
-            if tmp<prob:
-                curr_thetas[i] = np.random.normal(self.mu[i], np.sqrt(self.sigma[i]), 1)[0]
+            if tmp<self.prob:
+                curr_thetas[i] = self._pull_posterior(i)
             else:
-                curr_thetas[i] = self.mu[i]
+                curr_thetas[i] = self._mu_theta[i]
         return np.argmax(curr_thetas)
+
+class KL_UCB_plus_plus(TS):
     
-    def regret(self, T, prob, period):
-        mu_max = np.max(self.mu_gt)
-        self.init_arm()
-        regret = np.zeros(int(T/period))
-        r = 0
-        for t in range(T):
-            i = self.choose_arm(prob)
-            reward = self.pull_arm(i)
-            r = r + mu_max -  self.mu_gt[i]
-            self.update_arm(i, reward)
-            if t % period == 0:
-                regret[t//period] = r
-        return r, regret
-
-class TS_plus(TS):
-    def choose_arm(self):
-        curr_thetas = np.zeros(self.N)
-        for i in range(self.N):
-            curr_thetas[i] = np.random.normal(self.mu[i], np.sqrt(self.sigma[i]), 1)[0]
-            while curr_thetas[i]<self.mu[i]:
-                curr_thetas[i] = np.random.normal(self.mu[i], np.sqrt(self.sigma[i]), 1)[0]
-        return np.argmax(curr_thetas)
-
-class TS_Greedy_plus(TS_Greedy):
-    def choose_arm(self, prob):
-        curr_thetas = np.zeros(self.N)
-        for i in range(self.N):
-            # propability 1/N sample, (N-1)/N mu_i
-            tmp = np.random.random_sample()
-            # tmp = np.random.choice(self.N, 1, replace=True)[0]
-            if tmp<prob:
-                curr_thetas[i] = np.random.normal(self.mu[i], np.sqrt(self.sigma[i]), 1)[0]
-                while curr_thetas[i]<self.mu[i]:
-                    curr_thetas[i] = np.random.normal(self.mu[i], np.sqrt(self.sigma[i]), 1)[0]
-            else:
-                curr_thetas[i] = self.mu[i]
-        return np.argmax(curr_thetas)
-
-
-class TS_plusplus(TS):
-    def update_arm(self, i, t, reward):
-        self.mu[i] = (self.mu[i]*self.k[i]+reward)/(self.k[i]+2)
-        self.k[i] = self.k[i]+1
-        self.sigma[i] = self.sigma[i]*(1-1/(np.log(e*e*t/self.k[i])))
-    
-    def regret(self, T, period):
-        mu_max = np.max(self.mu_gt)
-        self.init_arm()
-        regret = np.zeros(int(T/period))
-        r = 0
-
-        for t in range(T):
-            i = self.choose_arm()
-            reward = self.pull_arm(i)
-            r = r + mu_max -  self.mu_gt[i]
-            self.update_arm(i, t+1, reward)
-            if t % period == 0:
-                regret[t//period] = r
-        return r, regret
-
-
-
-class TS_Greedy_plusplus(TS_Greedy):
-
-    def update_arm(self, i, t, reward):
-        self.mu[i] = (self.mu[i]*self.k[i]+reward)/(self.k[i]+2)
-        self.k[i] = self.k[i]+1
-        self.sigma[i] = self.sigma[i]*(1-1/(np.log(e*e*t/self.k[i])))
-
-    def regret(self, T, prob, period):
-        mu_max = np.max(self.mu_gt)
-        self.init_arm()
-        regret = np.zeros(int(T/period))
-        r = 0
-        for t in range(T):
-            i = self.choose_arm(prob)
-            reward = self.pull_arm(i)
-            r = r + mu_max -  self.mu_gt[i]
-            self.update_arm(i, t+1, reward)
-            if t % period == 0:
-                regret[t//period] = r
-        return r, regret
-
-
 
         
-
-
-
 if __name__ == "__main__":
     N = 100
     T = 100000
