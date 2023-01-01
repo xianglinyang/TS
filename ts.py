@@ -38,11 +38,11 @@ class TS:
         if self.distribution == "Gaussian":
             return np.random.normal(self.mu[i], np.sqrt(1/self.T[i]), 1)[0]
         elif self.distribution == "Berboulli":
-            pass
+            return np.random.beta(1+self.T[i]*self.mu[i], 1+self.T[i]*(1-self.mu[i]), size=1)[0]
         elif self.distribution == "Poisson":
             pass
         elif self.distribution == "Exponential":
-            pass
+            return np.random.gamma(self.T[i], 1/self.mu[i]*self.T[i],size=1)[0]
         else:
             raise NotImplementedError
     
