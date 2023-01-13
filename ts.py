@@ -2,7 +2,6 @@ import numpy as np
 import time
 import sympy as sy
 import matplotlib.pyplot as plt
-from math import e
 
 
 def kl_div(distribution, mu, x):
@@ -40,7 +39,7 @@ class TS:
         elif self.distribution == "Berboulli":
             return np.random.beta(1+self.T[i]*self.mu[i], 1+self.T[i]*(1-self.mu[i]), size=1)[0]
         elif self.distribution == "Poisson":
-            pass
+            return np.random.gamma(0.5+1/self.mu[i]*self.T[i],self.T[i],size=1)[0]
         elif self.distribution == "Exponential":
             return np.random.gamma(self.T[i], 1/self.mu[i]*self.T[i],size=1)[0]
         else:
@@ -243,9 +242,6 @@ class ExpTS_plus(TS):
         return np.argmax(thetas)
 
 
-
-
-        
 if __name__ == "__main__":
     N = 100
     T = 100000
