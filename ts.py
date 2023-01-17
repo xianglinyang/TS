@@ -21,7 +21,7 @@ def kl_div(distribution, mu, x):
 
 def find_mu(x, kl, upper, T):
     results = sy.solve(T*kl-upper, x)
-    return max(results)
+    return np.max(np.array(results))
 
 
 class TS:
@@ -39,7 +39,7 @@ class TS:
         elif self.distribution == "Bernoulli":
             return np.random.beta(1+self.T[i]*self.mu[i], 1+self.T[i]*(1-self.mu[i]), size=1)[0]
         elif self.distribution == "Poisson":
-            return np.random.gamma(0.5+1/self.mu[i]*self.T[i],self.T[i],size=1)[0]
+            return np.random.gamma(1+self.mu[i]*self.T[i],self.T[i],size=1)[0]
         elif self.distribution == "Gamma":
             return np.random.gamma(self.T[i]-1, 1/self.mu[i]*self.T[i],size=1)[0]
         else:
@@ -94,7 +94,9 @@ class TS:
         mu_max = np.max(self.mu_ground_truth)
         regrets_plot = np.zeros(int(T/period))
         regret = 0
-        for t in range(self.N+1, T+1, 1):
+        
+        start = 2*self.N + 1 if self.distribution == "Gamma" else self.N + 1
+        for t in range(start, T+1, 1):
             i = self._choose_arm()
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
@@ -102,7 +104,7 @@ class TS:
             regret = regret + mu_max - self.mu_ground_truth[i]
             
             if t % period == 0:
-                regrets_plot[t//period] = regret
+                regrets_plot[int(t/period)-1] = regret
         return regret, regrets_plot
 
 class TS_Greedy(TS):
@@ -137,7 +139,8 @@ class KL_UCB_plus_plus(TS):
         mu_max = np.max(self.mu_ground_truth)
         regrets_plot = np.zeros(int(T/period))
         regret = 0
-        for t in range(self.N+1, T+1, 1):
+        start = 2*self.N + 1 if self.distribution == "Gamma" else self.N + 1
+        for t in range(start, T+1, 1):
             i = self._choose_arm(T)
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
@@ -145,7 +148,7 @@ class KL_UCB_plus_plus(TS):
             regret = regret + mu_max - self.mu_ground_truth[i]
             
             if t % period == 0:
-                regrets_plot[t//period] = regret
+                regrets_plot[int(t/period)-1] = regret
         return regret, regrets_plot
 
 class KL_UCB(TS):
@@ -164,7 +167,8 @@ class KL_UCB(TS):
         mu_max = np.max(self.mu_ground_truth)
         regrets_plot = np.zeros(int(T/period))
         regret = 0
-        for t in range(self.N+1, T+1, 1):
+        start = 2*self.N + 1 if self.distribution == "Gamma" else self.N + 1
+        for t in range(start, T+1, 1):
             i = self._choose_arm(t)
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
@@ -172,13 +176,13 @@ class KL_UCB(TS):
             regret = regret + mu_max - self.mu_ground_truth[i]
             
             if t % period == 0:
-                regrets_plot[t//period] = regret
+                regrets_plot[int(t/period)-1] = regret
         return regret, regrets_plot
 
 class MOTS(TS):
     def __init__(self, N, mu_ground_truth, distribution, init_mu=0, rho=0.9):
         super().__init__(N, mu_ground_truth, distribution, init_mu)
-        self.rho = 0.9
+        self.rho = rho
 
     def _choose_arm(self, T):
         if self.distribution == "Gaussian":
@@ -201,7 +205,8 @@ class MOTS(TS):
         mu_max = np.max(self.mu_ground_truth)
         regrets_plot = np.zeros(int(T/period))
         regret = 0
-        for t in range(self.N+1, T+1, 1):
+        start = 2*self.N + 1 if self.distribution == "Gamma" else self.N + 1
+        for t in range(start, T+1, 1):
             i = self._choose_arm(T)
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
@@ -209,7 +214,7 @@ class MOTS(TS):
             regret = regret + mu_max - self.mu_ground_truth[i]
             
             if t % period == 0:
-                regrets_plot[t//period] = regret
+                regrets_plot[int(t/period)-1] = regret
         return regret, regrets_plot
 
 
@@ -242,9 +247,13 @@ class ExpTS_plus(TS):
                 kl = kl_div(self.distribution, self.mu[i], x)
                 y = np.random.random_sample()
                 if y>= .5:
-                    thetas[i] = max(sy.solve(1-0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
+                    # equivalent
+                    # thetas[i] = max(sy.solve(1-0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
+                    thetas[i] = max(sy.solve(sy.log(0.5/(1-y))/(self.T[i]-1)-kl, x))
                 else:
-                    thetas[i] = min(sy.solve(0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
+                    # equivalent
+                    # thetas[i] = min(sy.solve(0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
+                    thetas[i] = min(sy.solve(sy.log(0.5/y)/(self.T[i]-1)-kl, x))
             else:
                 thetas[i] = self.mu[i]
         return np.argmax(thetas)
