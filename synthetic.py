@@ -11,7 +11,7 @@ class SyntheticDataset:
             return np.random.uniform(0.2, 0.8, self.K)
         elif self.dataset == "TruncatedGaussian":
             # Truncated Gaussian: the mean of arms are generated from N (0, 5, 0.2) and the support [0.2, 0.8].
-            mu = np.random.normal(0, 5)
+            mu = np.random.normal(0.5, 0.2, self.K)
             mu = np.clip(mu, 0.2, 0.8)
             return mu
         elif self.dataset == "Segment":
