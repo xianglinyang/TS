@@ -18,5 +18,6 @@ class SyntheticDataset:
             # Segment: μi = 0.5 for i = 2, · · · , K and θ1 = 0.6 for i = 1
             mu = np.ones(self.K)*0.5
             mu[0] = 0.6
+            return mu
         else:
             raise NotImplementedError
