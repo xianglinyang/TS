@@ -8,11 +8,11 @@ def kl_div(distribution, mu, x):
     '''the symbolic expression of kl divergence'''
     if distribution == "Gaussian":
         kl = 1/2*(mu-x)**2
-    elif distribution == "Berboulli":
+    elif distribution == "Bernoulli":
         kl = mu*sy.log(mu/x)+(1-mu)*sy.log((1-mu)/(1-x))
     elif distribution == "Poisson":
         kl = mu*sy.log(mu/x)-mu+x
-    elif distribution == "Exponential":
+    elif distribution == "Gamma":
         kl = sy.log(mu/x)-(mu-x)/mu
     else:
         raise NotImplementedError
@@ -36,12 +36,12 @@ class TS:
     def _pull_posterior(self, i):
         if self.distribution == "Gaussian":
             return np.random.normal(self.mu[i], np.sqrt(1/self.T[i]), 1)[0]
-        elif self.distribution == "Berboulli":
+        elif self.distribution == "Bernoulli":
             return np.random.beta(1+self.T[i]*self.mu[i], 1+self.T[i]*(1-self.mu[i]), size=1)[0]
         elif self.distribution == "Poisson":
             return np.random.gamma(0.5+1/self.mu[i]*self.T[i],self.T[i],size=1)[0]
-        elif self.distribution == "Exponential":
-            return np.random.gamma(self.T[i], 1/self.mu[i]*self.T[i],size=1)[0]
+        elif self.distribution == "Gamma":
+            return np.random.gamma(self.T[i]-1, 1/self.mu[i]*self.T[i],size=1)[0]
         else:
             raise NotImplementedError
     
@@ -49,6 +49,10 @@ class TS:
         for i in range(self.N):
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
+        if self.distribution == "Gamma":
+            for i in range(self.N):
+                reward = self._pull_arm(i)
+                self._update_posterior(i, reward)
 
     def _update_posterior(self, i, reward):
         # reward mean
@@ -59,11 +63,11 @@ class TS:
     def _mu_theta(self):
         if self.distribution == "Gaussian":
             return self.mu
-        elif self.distribution == "Berboulli":
+        elif self.distribution == "Bernoulli":
             return self.mu
         elif self.distribution == "Poisson":
             return self.mu
-        elif self.distribution == "Exponential":
+        elif self.distribution == "Gamma":
             return 1 / self.mu
         else:
             raise NotImplementedError
@@ -77,11 +81,11 @@ class TS:
     def _pull_arm(self, i):
         if self.distribution == "Gaussian":
             return np.random.normal(self.mu_ground_truth[i], 1, 1)[0]
-        elif self.distribution == "Berboulli":
+        elif self.distribution == "Bernoulli":
             return np.random.binomial(1, self.mu_ground_truth[i], 1)[0]
         elif self.distribution == "Poisson":
             return np.random.poisson(self.mu_ground_truth[i], 1)[0]
-        elif self.distribution == "Exponential":
+        elif self.distribution == "Gamma":
             return np.random.exponential(self.mu_ground_truth[i], 1)[0]
         else:
             raise NotImplementedError
@@ -172,17 +176,21 @@ class KL_UCB(TS):
         return regret, regrets_plot
 
 class MOTS(TS):
+    def __init__(self, N, mu_ground_truth, distribution, init_mu=0, rho=0.9):
+        super().__init__(N, mu_ground_truth, distribution, init_mu)
+        self.rho = 0.9
+
     def _choose_arm(self, T):
         if self.distribution == "Gaussian":
             sigma = 1
-        elif self.distribution == "Berboulli":
+        elif self.distribution == "Bernoulli":
             sigma = 0.25
         else:
             raise NotImplementedError
 
         thetas = np.zeros(self.N)
         for i in range(self.N):
-            thetas[i] = np.random.normal(self.mu[i], sigma/0.9/self.T[i], 1)[0]
+            thetas[i] = np.random.normal(self.mu[i], sigma/self.rho/self.T[i], 1)[0]
 
         mus = self.mu+2/self.T*np.maximum(np.log(T/self.N*self.T),0)
 
@@ -240,55 +248,3 @@ class ExpTS_plus(TS):
             else:
                 thetas[i] = self.mu[i]
         return np.argmax(thetas)
-
-
-if __name__ == "__main__":
-    N = 100
-    T = 100000
-    repeat = 100
-    prob = 1/N
-    eps = 1
-    period = 1000
-
-    record_time = np.zeros(int(T/period))
-    for t in range(T):
-        if t % period == 0:
-            record_time[t//period] = np.log(t+1)
-
-    mu_gt = np.ones(N) - eps
-    mu_gt[0] = 1
-
-    t0 = time.time()
-
-    fig = plt.figure()
-    plt.title("TS variants")
-    plt.xlabel("T")
-    plt.ylabel("Regret")
-    
-    # ----------TS---------
-    mean_regret = np.zeros(repeat)
-    regret = np.zeros(int(T/period))
-    for i in range(repeat):
-        ts = TS(N, mu_gt)
-        mean_regret[i], regret_line = ts.regret(T, period)
-        regret = regret + regret_line
-    regret = regret / repeat
-    print("TS mean regret is {:.3f}".format(mean_regret.mean()))
-    
-    line1 = plt.plot(record_time, regret, 'go--', linewidth=1, markersize=4, label="TS")
-
-    # ----------TS Greedy---------
-    mean_regret = np.zeros(repeat)
-    regret = np.zeros(int(T/period))
-    for i in range(repeat):
-        ts = TS_Greedy(N, mu_gt)
-        mean_regret[i],regret_line = ts.regret(T, prob, period)
-        regret = regret_line + regret
-    regret = regret / repeat
-    print("TS Greedy mean regret is {:.3f}".format(mean_regret.mean()))
-
-    plt.legend()
-    plt.savefig("TS+.png")
-    t1 = time.time()
-
-    print("Time spent {:.2f}".format(t1-t0))
