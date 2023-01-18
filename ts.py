@@ -1,9 +1,7 @@
 import numpy as np
-import time
 import sympy as sy
-import matplotlib.pyplot as plt
 from tqdm import tqdm
-from scipy.optimize import fsolve, least_squares
+from scipy.optimize import least_squares
 
 
 def kl_div(distribution, mu, x):
@@ -15,29 +13,24 @@ def kl_div(distribution, mu, x):
     elif distribution == "Poisson":
         kl = mu*sy.log(mu/x)-mu+x
     elif distribution == "Gamma":
-        kl = sy.log(mu/x)-(mu-x)/mu
+        kl = sy.log(x/mu)-(x-mu)/x
     else:
         raise NotImplementedError
     return kl
 
 
-def find_mu(x, kl, upper, T, distribution):
-    # print("Solving ", sy.Eq(T*kl, upper))
+def find_mu(x, x_min, kl, upper, T, distribution):
     eqn = sy.Eq(T*kl, upper)
-    # print(eqn)
     if eqn == False:
         return np.inf
+    func_np = sy.lambdify(x, T*kl-upper, modules=['numpy'])
     if distribution == "Bernoulli":
-        func_np = sy.lambdify(x, T*kl-upper, modules=['numpy'])
-        solution = least_squares(func_np, (0.95), bounds = ((0), (1))).x
-        # solution = fsolve(func_np, [0.05,0.95])
-        return solution[0]
+        solution = least_squares(func_np, (x_min+0.01), bounds = ((x_min), (1))).x
+    elif distribution == "Gamma" or distribution == "Gaussian" or distribution == "Poisson":
+        solution = least_squares(func_np, (x_min+0.01), bounds = ((x_min), (np.inf))).x
     else:
-        results = sy.solve(eqn, x,rational=False)
-        # print(results)
-        # results = sy.nsolve(eqn, x)
-        # results = sy.solveset(eqn, x)
-        return np.max(np.array(results))
+        raise NotImplementedError
+    return solution[0]
         
 
 class TS:
@@ -58,7 +51,7 @@ class TS:
         elif self.distribution == "Poisson":
             return np.random.gamma(1+self.mu[i]*self.T[i],self.T[i],size=1)[0]
         elif self.distribution == "Gamma":
-            return np.random.gamma(self.T[i]-1, 1/self.mu[i]*self.T[i],size=1)[0]
+            return np.random.gamma(self.T[i]-1, self._mu_theta[i]*self.T[i],size=1)[0]
         else:
             raise NotImplementedError
     
@@ -154,14 +147,13 @@ class KL_UCB_plus_plus(TS):
         super().__init__(N, mu_ground_truth, distribution, init_mu, verbose)
         # for faster computation, as memory of curr_u
         self.curr_u = None
-        
     
     def _update_curr_u(self, i, T):
         U_upper = np.max(np.log((np.power(np.max(np.log(T/(self.N*self.T[i]))),2)+1)*T/(self.N*self.T[i])))
         # find mu kl(self.mu[i], mu)<=U_upper[i]/self.T[i]
         x = sy.symbols("x", real=True)
         kl = kl_div(self.distribution, self.mu[i], x)
-        self.curr_u[i] = find_mu(x, kl, upper=U_upper, T=self.T[i], distribution=self.distribution)
+        self.curr_u[i] = find_mu(x, self.mu[i], kl, upper=U_upper, T=self.T[i], distribution=self.distribution)
 
     def _choose_arm(self, T):
         U_upper = np.maximum(np.log((np.power(np.maximum(np.log(T/(self.N*self.T)),0),2)+1)*T/(self.N*self.T)),0)
@@ -171,11 +163,9 @@ class KL_UCB_plus_plus(TS):
                 # find mu kl(self.mu[i], mu)<=U_upper[i]/self.T[i]
                 x = sy.symbols("x", real=True)
                 kl = kl_div(self.distribution, self.mu[i], x)
-                self.curr_u[i] = find_mu(x, kl, upper=U_upper[i], T=self.T[i], distribution=self.distribution)
-
+                self.curr_u[i] = find_mu(x, self.mu[i], kl, upper=U_upper[i], T=self.T[i], distribution=self.distribution)
         return np.argmax(self.curr_u)
         
-    
     def regret(self, T, period):
         mu_max = np.max(self.mu_ground_truth)
         regrets_plot = np.zeros(int(T/period))
@@ -214,7 +204,15 @@ class KL_UCB(TS):
             kl = kl_div(self.distribution, self.mu[i], x)
             if self.verbose:
                 print("Arm {} kl divergence:\n{}".format(i, kl))
-            self.curr_u[i] = find_mu(x, kl, upper=U_upper, T=self.T[i], distribution=self.distribution)
+            self.curr_u[i] = find_mu(x, self.mu[i], kl, upper=U_upper, T=self.T[i], distribution=self.distribution)
+
+    def _update_curr_u_i(self, t, i):
+        U_upper = np.log(t)+ 3 * np.log(np.log(t))
+        x = sy.symbols("x", real=True)
+        kl = kl_div(self.distribution, self.mu[i], x)
+        if self.verbose:
+            print("Arm {} kl divergence:\n{}".format(i, kl))
+        self.curr_u[i] = find_mu(x, self.mu[i], kl, upper=U_upper, T=self.T[i], distribution=self.distribution)
 
     def _choose_arm(self):
         return np.argmax(self.curr_u)
@@ -225,11 +223,13 @@ class KL_UCB(TS):
         regret = 0
         start = 2*self.N + 1 if self.distribution == "Gamma" else self.N + 1
         for t in tqdm(range(start, T+1, 1)):
-            if np.log10(t)<2 or np.log10(t) % 1 ==0:
-                self._update_curr_u(t)
             i = self._choose_arm()
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
+            if t<100 or np.log10(t) % 1 ==0:
+                self._update_curr_u(t)
+            else:
+                self._update_curr_u_i(t, i)
             
             regret = regret + mu_max - self.mu_ground_truth[i]
             
@@ -252,7 +252,7 @@ class MOTS(TS):
 
         thetas = np.zeros(self.N)
         for i in range(self.N):
-            thetas[i] = np.random.normal(self.mu[i], sigma/self.rho/self.T[i], 1)[0]
+            thetas[i] = np.random.normal(self.mu[i], np.sqrt(sigma/self.rho/self.T[i]), 1)[0]
 
         mus = self.mu+2/self.T*np.maximum(np.log(T/self.N*self.T),0)
 
@@ -277,6 +277,23 @@ class MOTS(TS):
 
 
 class ExpTS(TS):
+
+    def _initialization(self):
+        if self.distribution == "Poisson":
+            for i in range(self.N):
+                # in case 0
+                reward = self._pull_arm(i)+1
+                self._update_posterior(i, reward)
+                reward = self._pull_arm(i)+1
+                self._update_posterior(i, reward)
+        else:
+            for i in range(self.N):
+                reward = self._pull_arm(i)
+                self._update_posterior(i, reward)
+                reward = self._pull_arm(i)
+                self._update_posterior(i, reward)
+        print("Initialize arms...")
+
     def _choose_arm(self):
         thetas = np.zeros(self.N)
         for i in range(self.N):
@@ -313,7 +330,24 @@ class ExpTS(TS):
             thetas[i] = solution[0]
         return np.argmax(thetas)
 
-class ExpTS_plus(TS):
+    def regret(self, T, period):
+        mu_max = np.max(self.mu_ground_truth)
+        regrets_plot = np.zeros(int(T/period))
+        regret = 0
+
+        start = 2*self.N + 1
+        for t in tqdm(range(start, T+1, 1)):
+            i = self._choose_arm()
+            reward = self._pull_arm(i)
+            self._update_posterior(i, reward)
+            
+            regret = regret + mu_max - self.mu_ground_truth[i]
+            
+            if t % period == 0:
+                regrets_plot[int(t/period)-1] = regret
+        return regret, regrets_plot
+
+class ExpTS_plus(ExpTS):
     '''with prob probability'''
     def __init__(self, N, mu_ground_truth, distribution, prob, init_mu=0):
         super().__init__(N, mu_ground_truth, distribution, init_mu)
@@ -375,19 +409,4 @@ class ExpTS_plus(TS):
                 thetas[i] = self.mu[i]
         return np.argmax(thetas)
 
-    def regret(self, T, period):
-        mu_max = np.max(self.mu_ground_truth)
-        regrets_plot = np.zeros(int(T/period))
-        regret = 0
-
-        start = 2*self.N + 1
-        for t in tqdm(range(start, T+1, 1)):
-            i = self._choose_arm()
-            reward = self._pull_arm(i)
-            self._update_posterior(i, reward)
-            
-            regret = regret + mu_max - self.mu_ground_truth[i]
-            
-            if t % period == 0:
-                regrets_plot[int(t/period)-1] = regret
-        return regret, regrets_plot
+    
