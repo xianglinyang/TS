@@ -23,11 +23,13 @@ DISTRIBUTION = args.distribution
 REPEAT = args.repeat
 PERIOD = args.period
 PROB = args.prob
+print("Load hyperparameters...")
 
 regret_plots = np.zeros(int(T/PERIOD))
 for i in range(REPEAT):
     sd = SyntheticDataset(N, DATASET)
     mu_gt = sd.generate_dataset()
+    print("Generate {} dataset {}...".format(DATASET, mu_gt))
     if BASELINE == "TS":
         ts = TS(N, mu_gt, DISTRIBUTION)
     elif BASELINE == "KL_UCB_plus_plus":
