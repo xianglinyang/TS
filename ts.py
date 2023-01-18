@@ -289,35 +289,28 @@ class ExpTS(TS):
             if y>= .5:
                 # equivalent
                 # thetas[i] = max(sy.solve(1-0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
+                func_np = sy.lambdify(x, sy.log(0.5/(1-y))/(self.T[i]-1)-kl, modules=['numpy'])
                 if self.distribution == "Bernoulli":
-                    func_np = sy.lambdify(x, sy.log(0.5/(1-y))/(self.T[i]-1)-kl, modules=['numpy'])
                     solution = least_squares(func_np, (self.mu[i]+0.1), bounds = ((self.mu[i]), (1))).x
-                    print(solution)
-                    thetas[i] = solution[0]
-                elif self.distribution == "Poisson":
-                    func_np = sy.lambdify(x, sy.log(0.5/(1-y))/(self.T[i]-1)-kl, modules=['numpy'])
+                elif self.distribution == "Poisson" or self.distribution== "Gamma":
                     solution = least_squares(func_np, (self.mu[i]+0.1), bounds = ((self.mu[i]), (np.inf))).x
-                    thetas[i] = max(solution)
+                elif self.distribution == "Gaussian":
+                    solution = least_squares(func_np, (self.mu[i]+0.1), bounds = ((self.mu[i]), (np.inf))).x
                 else:
-                    eqn = sy.Eq(sy.log(0.5/(1-y))/(self.T[i]-1),kl)
-                    results = sy.solve(eqn, x,rational=False)
-                    thetas[i] = np.max(results)
+                    raise NotImplementedError
             else:
                 # equivalent
                 # thetas[i] = min(sy.solve(0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
+                func_np = sy.lambdify(x, sy.log(0.5/y)/(self.T[i]-1)-kl, modules=['numpy'])
                 if self.distribution == "Bernoulli":
-                    func_np = sy.lambdify(x, sy.log(0.5/y)/(self.T[i]-1)-kl, modules=['numpy'])
                     solution =least_squares(func_np, (self.mu[i]-0.1), bounds = ((0), (self.mu[i]))).x
-                    thetas[i] = min(solution)
-                elif self.distribution == "Poisson":
-                    func_np = sy.lambdify(x, sy.log(0.5/y)/(self.T[i]-1)-kl, modules=['numpy'])
+                elif self.distribution == "Poisson" or self.distribution== "Gamma":
                     solution =least_squares(func_np, (0.01), bounds = ((0), (self.mu[i]))).x
-                    thetas[i] = min(solution)
+                elif self.distribution == "Gaussian":
+                    solution = least_squares(func_np, (self.mu[i]-0.1), bounds = ((-np.inf), (self.mu[i]))).x
                 else:
-                    eqn = sy.Eq(sy.log(0.5/y)/(self.T[i]-1),kl)
-                    results = sy.solve(eqn, x, rational=False)
-                    print(results)
-                    thetas[i] = np.min(results)
+                    raise NotImplementedError
+            thetas[i] = solution[0]
         return np.argmax(thetas)
 
 class ExpTS_plus(TS):
