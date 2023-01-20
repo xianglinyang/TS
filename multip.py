@@ -3,9 +3,13 @@ from config import *
 from main import run
 import time
 
+def setcallback(file_name, regret_line):
+    # np.save(file_name, regret_line)
+    pass
+
 t_s = time.time()
 c = 0
-p = Pool(20)
+p = Pool()
 for r in range(REPEAT):
     for BASELINE in BASELINES:
         for N in Ns:

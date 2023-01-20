@@ -51,8 +51,7 @@ def run(BASELINE, N, DATASET, DISTRIBUTION, PERIOD, PROB, REPEAT_TIME):
     else:
         raise NotImplementedError
     _,regret_line = ts.regret(T, PERIOD)
-
-    os.makedirs("./results", exist_ok=True)
-    file_name = "./results/{}-{}-{}-{}-{}-{}-{}".format(BASELINE, N, DATASET, DISTRIBUTION, round(PROB, 2), REPEAT_TIME)
+    file_name = "./results/{}-{}-{}-{}-{}-{}.npy".format(BASELINE, N, DATASET, DISTRIBUTION, round(PROB, 2), REPEAT_TIME)
     np.save(file_name, regret_line)
+
 
