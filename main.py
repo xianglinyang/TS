@@ -1,15 +1,15 @@
 import numpy as np
 import os
+import time
 from config import *
 from ts import *
-from synthetic import SyntheticDataset
+from synthetic import SyntheticSimpleDataset
 import argparse
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--baseline', type=str, choices=BASELINES)
     parser.add_argument('-k', type=int, choices=Ns)
-    parser.add_argument('--dataset', type=str, choices=DATASETS)
     parser.add_argument('--distribution', type=str, choices=DISTRIBUTIONS)
     parser.add_argument("--repeat", type=int)
     parser.add_argument("--period", type=int)
@@ -18,21 +18,22 @@ def main():
     # get hyperparameters
     BASELINE = args.baseline
     N = args.k
-    DATASET = args.dataset
     DISTRIBUTION = args.distribution
     REPEAT = args.repeat
     PERIOD = args.period
     PROB = args.prob
     print("Load hyperparameters...")
-    for _ in range(REPEAT):
-        run(BASELINE, N, DATASET, DISTRIBUTION, PERIOD, PROB)
 
-
-def run(BASELINE, N, DATASET, DISTRIBUTION, PERIOD, PROB, REPEAT_TIME):
-
-    sd = SyntheticDataset(N, DATASET)
+    sd = SyntheticSimpleDataset(N, DISTRIBUTION)
     mu_gt = sd.generate_dataset()
-    print("Generate {} dataset {}...".format(DATASET, mu_gt))
+    file_name = "./results/{}-{}.npy".format(N, DISTRIBUTION)
+    np.save(file_name, mu_gt)
+
+    for r in range(REPEAT_T[BASELINE]):
+        run(mu_gt, BASELINE, N, DISTRIBUTION, PERIOD, PROB, r)
+
+
+def run(mu_gt, BASELINE, N, DISTRIBUTION, PERIOD, PROB, REPEAT_TIME):
     if BASELINE == "TS":
         ts = TS(N, mu_gt, DISTRIBUTION)
     elif BASELINE == "KL_UCB_plus_plus":
@@ -50,8 +51,10 @@ def run(BASELINE, N, DATASET, DISTRIBUTION, PERIOD, PROB, REPEAT_TIME):
         ts = ExpTS_plus(N, mu_gt, DISTRIBUTION, PROB)
     else:
         raise NotImplementedError
-    _,regret_line = ts.regret(T, PERIOD)
-    file_name = "./results/{}-{}-{}-{}-{}-{}.npy".format(BASELINE, N, DATASET, DISTRIBUTION, round(PROB, 2), REPEAT_TIME)
+    _, regret_line = ts.regret(T, PERIOD)
+
+    file_name = "./results/{}-{}-{}-{}-{}.npy".format(BASELINE, N, DISTRIBUTION, round(PROB, 2), REPEAT_TIME)
     np.save(file_name, regret_line)
+    print(BASELINE, N, DISTRIBUTION, PERIOD, PROB, round(t_e-t_s, 2))
 
 

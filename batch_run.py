@@ -15,6 +15,6 @@ for N in Ns:
                     continue
             if BASELINE in ["TSGreedy", "ExpTS_plus"]:
                 for PROB in PROBS_fn(N):
-                    os.system("python main.py --baseline {} -k {} --dataset {} --distribution {} --repeat {} --period {} --prob {}".format(BASELINE, N, DATASET, DISTRIBUTION, REPEAT, PERIOD, PROB))
+                    os.system("python main.py --baseline {} -k {} --distribution {} --repeat {} --period {} --prob {}".format(BASELINE, N, DATASET, DISTRIBUTION, REPEAT, PERIOD, PROB))
             else:
-                os.system("python main.py --baseline {} -k {} --dataset {} --distribution {} --repeat {} --period {}".format(BASELINE, N, DATASET, DISTRIBUTION, REPEAT, PERIOD))
+                os.system("python main.py --baseline {} -k {} --distribution {} --repeat {} --period {}".format(BASELINE, N, DATASET, DISTRIBUTION, REPEAT, PERIOD))
