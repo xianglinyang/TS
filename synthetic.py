@@ -21,3 +21,7 @@ class SyntheticDataset:
             return mu
         else:
             raise NotImplementedError
+
+class SimpleDataset:
+    def __init__(self) -> None:
+        pass
