@@ -49,9 +49,9 @@ class TS:
         elif self.distribution == "Bernoulli":
             return np.random.beta(1+self.T[i]*self.mu[i], 1+self.T[i]*(1-self.mu[i]), size=1)[0]
         elif self.distribution == "Poisson":
-            return np.random.gamma(1+self.mu[i]*self.T[i],self.T[i],size=1)[0]
+            return np.random.gamma(1+self.mu[i]*self.T[i],1/self.T[i],size=1)[0]
         elif self.distribution == "Gamma":
-            return np.random.gamma(self.T[i]-1, self._mu_theta[i]*self.T[i],size=1)[0]
+            return np.random.gamma(self.T[i]-1, 1/self._mu_theta[i]/self.T[i],size=1)[0]
         else:
             raise NotImplementedError
     
@@ -70,7 +70,8 @@ class TS:
             for i in range(self.N):
                 reward = self._pull_arm(i)
                 self._update_posterior(i, reward)
-        print("Initialize arms...")
+        if self.verbose>0:
+            print("Initialize arms...")
 
     def _update_posterior(self, i, reward):
         # reward mean
@@ -114,7 +115,8 @@ class TS:
         regret = 0
 
         start = 2*self.N + 1 if self.distribution == "Gamma" else self.N + 1
-        for t in tqdm(range(start, T+1, 1)):
+        # for t in tqdm(range(start, T+1, 1)):
+        for t in range(start, T+1, 1):
             i = self._choose_arm()
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
@@ -171,7 +173,8 @@ class KL_UCB_plus_plus(TS):
         regrets_plot = np.zeros(int(T/period))
         regret = 0
         start = 2*self.N + 1 if self.distribution == "Gamma" else self.N + 1
-        for t in tqdm(range(start, T+1, 1)):
+        # for t in tqdm(range(start, T+1, 1)):
+        for t in range(start, T+1, 1):
             i = self._choose_arm(T)
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
@@ -222,7 +225,8 @@ class KL_UCB(TS):
         regrets_plot = np.zeros(int(T/period))
         regret = 0
         start = 2*self.N + 1 if self.distribution == "Gamma" else self.N + 1
-        for t in tqdm(range(start, T+1, 1)):
+        # for t in tqdm(range(start, T+1, 1)):
+        for t in range(start, T+1, 1):
             i = self._choose_arm()
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
@@ -264,7 +268,8 @@ class MOTS(TS):
         regrets_plot = np.zeros(int(T/period))
         regret = 0
         start = 2*self.N + 1 if self.distribution == "Gamma" else self.N + 1
-        for t in tqdm(range(start, T+1, 1)):
+        # for t in tqdm(range(start, T+1, 1)):
+        for t in range(start, T+1, 1):
             i = self._choose_arm(T)
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
@@ -336,7 +341,8 @@ class ExpTS(TS):
         regret = 0
 
         start = 2*self.N + 1
-        for t in tqdm(range(start, T+1, 1)):
+        # for t in tqdm(range(start, T+1, 1)):
+        for t in range(start, T+1, 1):
             i = self._choose_arm()
             reward = self._pull_arm(i)
             self._update_posterior(i, reward)
