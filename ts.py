@@ -254,7 +254,7 @@ class MOTS(TS):
         for i in range(self.N):
             thetas[i] = np.random.normal(self.mu[i], np.sqrt(sigma/self.rho/self.T[i]), 1)[0]
 
-        mus = self.mu+2/self.T*np.maximum(np.log(T/self.N*self.T),0)
+        mus = self.mu+4/self.T*np.maximum(np.log(T/self.N*self.T),0)
 
         curr_thetas = np.minimum(thetas, mus)
         return np.argmax(curr_thetas)
