@@ -22,6 +22,33 @@ class SyntheticDataset:
         else:
             raise NotImplementedError
 
-class SimpleDataset:
-    def __init__(self) -> None:
-        pass
+
+class SyntheticSimpleDataset:
+    def __init__(self, N, distribution) -> None:
+        self.N = N
+        self.distribution = distribution
+    
+    def generate_dataset(self):
+        mu = np.zeros(self.N)
+        if self.distribution == "Bernoulli":
+            mu[:10] = np.ones(10)*0.8
+            mu[0] = 0.9
+        elif self.distribution == "Gaussian" or self.distribution == "Poisson":
+            mu[:10] = np.ones(10)*0.7
+            mu[0] = 1.0
+        elif self.distribution == "Gamma":
+            mu[:10] = np.ones(10)*0.8
+            mu[0] = 1.0
+        else:
+            raise NotImplementedError
+        
+        if self.N >10:
+            if self.distribution == "Bernoulli":
+                mu[10:] = np.random.uniform(0.5,0.7,40)
+            else:
+                mu[10:] = np.random.uniform(0.3,0.5,40)
+        return mu
+
+
+            
+        
