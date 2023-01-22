@@ -132,7 +132,7 @@ class TS_Greedy(TS):
     def __init__(self, N, mu_ground_truth, distribution, prob, init_mu=0):
         super().__init__(N, mu_ground_truth, distribution, init_mu)
         self.prob = prob
-
+    
     def _choose_arm(self):
         curr_thetas = np.zeros(self.N)
         for i in range(self.N):
@@ -140,8 +140,9 @@ class TS_Greedy(TS):
             if tmp<self.prob:
                 curr_thetas[i] = self._pull_posterior(i)
             else:
-                curr_thetas[i] = self._mu_theta[i]
+                curr_thetas[i] = self.mu[i]
         return np.argmax(curr_thetas)
+        
 
 class KL_UCB_plus_plus(TS):
 
