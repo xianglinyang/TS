@@ -1,6 +1,4 @@
 import numpy as np
-import os
-import time
 from config import *
 from ts import *
 from synthetic import SyntheticSimpleDataset
@@ -19,7 +17,6 @@ def main():
     BASELINE = args.baseline
     N = args.k
     DISTRIBUTION = args.distribution
-    REPEAT = args.repeat
     PERIOD = args.period
     PROB = args.prob
     print("Load hyperparameters...")
@@ -55,6 +52,24 @@ def run(mu_gt, BASELINE, N, DISTRIBUTION, PERIOD, PROB, REPEAT_TIME):
 
     file_name = "./results/{}-{}-{}-{}-{}.npy".format(BASELINE, N, DISTRIBUTION, round(PROB, 2), REPEAT_TIME)
     np.save(file_name, regret_line)
-    print(BASELINE, N, DISTRIBUTION, PERIOD, PROB, round(t_e-t_s, 2))
+    # print(BASELINE, N, DISTRIBUTION, PERIOD, PROB, round(t_e-t_s, 2))
 
 
+if __name__ == "__main__":
+    N = 10
+    DISTRIBUTION = "Bernoulli"
+    BASELINE = "ExpTS"
+
+    sd = SyntheticSimpleDataset(N, DISTRIBUTION)
+    mu_gt = sd.generate_dataset()
+    file_name = "./results/{}-{}.npy".format(N, DISTRIBUTION)
+    np.save(file_name, mu_gt)
+
+    if BASELINE == "MOTS":
+        if DISTRIBUTION in ["Gamma", "Poisson"]:
+            pass
+    if BASELINE in ["TSGreedy", "ExpTS_plus"]:
+        for PROB in PROBS_fn(N):
+            run(mu_gt, BASELINE, N, DISTRIBUTION, PERIOD, PROB, 0)
+    else:
+        run(mu_gt, BASELINE, N, DISTRIBUTION, PERIOD, 1.0, 0)
