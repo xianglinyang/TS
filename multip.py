@@ -18,7 +18,7 @@ for N in Ns:
         np.save(file_name, mu_gt)
 
         for BASELINE in BASELINES:
-            for r in range(REPEAT_T[BASELINE]):
+            for r in range(REPEAT_T[BASELINE][0], REPEAT_T[BASELINE][1]):
 
                 if BASELINE == "MOTS":
                     if DISTRIBUTION in ["Gamma", "Poisson"]:

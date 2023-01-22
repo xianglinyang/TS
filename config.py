@@ -9,11 +9,12 @@ T = pow(10, 4)
 PERIOD = 100
 
 REPEAT_T = {
-    "TS": 1000,
-    "TSGreedy": 1000,
-    "MOTS": 1000,
-    "KL_UCB": 200,
-    "KL_UCB_plus_plus": 200,
-    "ExpTS": 50,
-    "ExpTS_plus": 50
+    # [, )
+    "TS": [0, 4000],
+    "TSGreedy": [0, 4000],
+    "MOTS": [0, 4000],
+    "KL_UCB": [0, 1000],
+    "KL_UCB_plus_plus": [0, 1000],
+    "ExpTS": [0, 50],
+    "ExpTS_plus": [0, 50]
 }
