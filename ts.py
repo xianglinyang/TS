@@ -142,7 +142,7 @@ class TS_Greedy(TS):
             else:
                 curr_thetas[i] = self.mu[i]
         return np.argmax(curr_thetas)
-        
+
 
 class KL_UCB_plus_plus(TS):
 
@@ -299,41 +299,43 @@ class ExpTS(TS):
                 reward = self._pull_arm(i)
                 self._update_posterior(i, reward)
         print("Initialize arms...")
+    
+    def _solve_theta(self, i):
+        x = sy.symbols("x", real=True)
+        kl = kl_div(self.distribution, self.mu[i], x)
+        if kl == sy.nan:
+            return np.inf
+        y = np.random.random_sample()
+        if y>= .5:
+            # equivalent
+            # thetas[i] = max(sy.solve(1-0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
+            func_np = sy.lambdify(x, sy.log(0.5/(1-y))/(self.T[i]-1)-kl, modules=['numpy'])
+            if self.distribution == "Bernoulli":
+                solution = least_squares(func_np, ((self.mu[i]+1)/2.0), bounds = ((self.mu[i]), (1))).x
+            elif self.distribution == "Poisson" or self.distribution== "Gamma":
+                solution = least_squares(func_np, (self.mu[i]+0.1), bounds = ((self.mu[i]), (np.inf))).x
+            elif self.distribution == "Gaussian":
+                solution = least_squares(func_np, (self.mu[i]+0.1), bounds = ((self.mu[i]), (np.inf))).x
+            else:
+                raise NotImplementedError
+        else:
+            # equivalent
+            # thetas[i] = min(sy.solve(0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
+            func_np = sy.lambdify(x, sy.log(0.5/y)/(self.T[i]-1)-kl, modules=['numpy'])
+            if self.distribution == "Bernoulli":
+                solution =least_squares(func_np, (self.mu[i]*0.5), bounds = ((0), (self.mu[i]))).x
+            elif self.distribution == "Poisson" or self.distribution== "Gamma":
+                solution =least_squares(func_np, (self.mu[i]*0.5), bounds = ((0), (self.mu[i]))).x
+            elif self.distribution == "Gaussian":
+                solution = least_squares(func_np, (self.mu[i]-0.1), bounds = ((-np.inf), (self.mu[i]))).x
+            else:
+                raise NotImplementedError
+        return solution[0]
 
     def _choose_arm(self):
         thetas = np.zeros(self.N)
         for i in range(self.N):
-            x = sy.symbols("x", real=True)
-            kl = kl_div(self.distribution, self.mu[i], x)
-            if kl == sy.nan:
-                thetas[i] = np.inf
-                continue
-            y = np.random.random_sample()
-            if y>= .5:
-                # equivalent
-                # thetas[i] = max(sy.solve(1-0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
-                func_np = sy.lambdify(x, sy.log(0.5/(1-y))/(self.T[i]-1)-kl, modules=['numpy'])
-                if self.distribution == "Bernoulli":
-                    solution = least_squares(func_np, (self.mu[i]+0.1), bounds = ((self.mu[i]), (1))).x
-                elif self.distribution == "Poisson" or self.distribution== "Gamma":
-                    solution = least_squares(func_np, (self.mu[i]+0.1), bounds = ((self.mu[i]), (np.inf))).x
-                elif self.distribution == "Gaussian":
-                    solution = least_squares(func_np, (self.mu[i]+0.1), bounds = ((self.mu[i]), (np.inf))).x
-                else:
-                    raise NotImplementedError
-            else:
-                # equivalent
-                # thetas[i] = min(sy.solve(0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
-                func_np = sy.lambdify(x, sy.log(0.5/y)/(self.T[i]-1)-kl, modules=['numpy'])
-                if self.distribution == "Bernoulli":
-                    solution =least_squares(func_np, (self.mu[i]-0.1), bounds = ((0), (self.mu[i]))).x
-                elif self.distribution == "Poisson" or self.distribution== "Gamma":
-                    solution =least_squares(func_np, (0.01), bounds = ((0), (self.mu[i]))).x
-                elif self.distribution == "Gaussian":
-                    solution = least_squares(func_np, (self.mu[i]-0.1), bounds = ((-np.inf), (self.mu[i]))).x
-                else:
-                    raise NotImplementedError
-            thetas[i] = solution[0]
+            thetas[i] = self._solve_theta(i)
         return np.argmax(thetas)
 
     def regret(self, T, period):
@@ -360,58 +362,12 @@ class ExpTS_plus(ExpTS):
         super().__init__(N, mu_ground_truth, distribution, init_mu)
         self.prob = prob
     
-    def _initialization(self):
-        if self.distribution == "Poisson":
-            for i in range(self.N):
-                # in case 0
-                reward = self._pull_arm(i)+1
-                self._update_posterior(i, reward)
-                reward = self._pull_arm(i)+1
-                self._update_posterior(i, reward)
-        else:
-            for i in range(self.N):
-                reward = self._pull_arm(i)
-                self._update_posterior(i, reward)
-                reward = self._pull_arm(i)
-                self._update_posterior(i, reward)
-        print("Initialize arms...")
-    
     def _choose_arm(self):
         thetas = np.zeros(self.N)
         for i in range(self.N):
             p = np.random.random_sample()
             if p<1./self.N:
-                x = sy.symbols("x", real=True)
-                kl = kl_div(self.distribution, self.mu[i], x)
-                if kl == sy.nan:
-                    thetas[i] = np.inf
-                    continue
-                y = np.random.random_sample()
-                if y>= .5:
-                    # equivalent
-                    # thetas[i] = max(sy.solve(1-0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
-                    func_np = sy.lambdify(x, sy.log(0.5/(1-y))/(self.T[i]-1)-kl, modules=['numpy'])
-                    if self.distribution == "Bernoulli":
-                        solution = least_squares(func_np, (self.mu[i]+0.1), bounds = ((self.mu[i]), (1))).x
-                    elif self.distribution == "Poisson" or self.distribution== "Gamma":
-                        solution = least_squares(func_np, (self.mu[i]+0.1), bounds = ((self.mu[i]), (np.inf))).x
-                    elif self.distribution == "Gaussian":
-                        solution = least_squares(func_np, (self.mu[i]+0.1), bounds = ((self.mu[i]), (np.inf))).x
-                    else:
-                        raise NotImplementedError
-                else:
-                    # equivalent
-                    # thetas[i] = min(sy.solve(0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
-                    func_np = sy.lambdify(x, sy.log(0.5/y)/(self.T[i]-1)-kl, modules=['numpy'])
-                    if self.distribution == "Bernoulli":
-                        solution =least_squares(func_np, (self.mu[i]-0.1), bounds = ((0), (self.mu[i]))).x
-                    elif self.distribution == "Poisson" or self.distribution== "Gamma":
-                        solution =least_squares(func_np, (0.01), bounds = ((0), (self.mu[i]))).x
-                    elif self.distribution == "Gaussian":
-                        solution = least_squares(func_np, (self.mu[i]-0.1), bounds = ((-np.inf), (self.mu[i]))).x
-                    else:
-                        raise NotImplementedError
-                thetas[i] = solution[0]
+                thetas[i] = self._solve_theta(i)
             else:
                 thetas[i] = self.mu[i]
         return np.argmax(thetas)
