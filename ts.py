@@ -51,7 +51,7 @@ class TS:
         elif self.distribution == "Poisson":
             return np.random.gamma(1+self.mu[i]*self.T[i],1/self.T[i],size=1)[0]
         elif self.distribution == "Gamma":
-            return np.random.gamma(self.T[i]-1, 1/self._mu_theta[i]/self.T[i],size=1)[0]
+            return 1/np.random.gamma(self.T[i]-1, self.mu[i]/self.T[i],size=1)[0]
         else:
             raise NotImplementedError
     
