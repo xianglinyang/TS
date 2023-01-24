@@ -51,7 +51,7 @@ class TS:
         elif self.distribution == "Poisson":
             return np.random.gamma(1+self.mu[i]*self.T[i],1/self.T[i],size=1)[0]
         elif self.distribution == "Gamma":
-            return 1/np.random.gamma(self.T[i]-1, self.mu[i]/self.T[i],size=1)[0]
+            return 1/np.random.gamma(self.T[i]-1, 1/self.T[i]/self.mu[i],size=1)[0]
         else:
             raise NotImplementedError
     
@@ -77,19 +77,6 @@ class TS:
         # reward mean
         self.mu[i] = (self.mu[i]*self.T[i]+reward)/(self.T[i]+1)
         self.T[i] = self.T[i]+1
-    
-    @property
-    def _mu_theta(self):
-        if self.distribution == "Gaussian":
-            return self.mu
-        elif self.distribution == "Bernoulli":
-            return self.mu
-        elif self.distribution == "Poisson":
-            return self.mu
-        elif self.distribution == "Gamma":
-            return 1 / self.mu
-        else:
-            raise NotImplementedError
 
     def _choose_arm(self):
         curr_thetas = np.zeros(self.N)
