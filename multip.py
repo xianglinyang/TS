@@ -12,10 +12,12 @@ p = Pool()
 
 for N in Ns:
     for DISTRIBUTION in DISTRIBUTIONS:
-        sd = SyntheticSimpleDataset(N, DISTRIBUTION)
-        mu_gt = sd.generate_dataset()
+        # sd = SyntheticSimpleDataset(N, DISTRIBUTION)
+        # mu_gt = sd.generate_dataset()
+        # file_name = "./results/{}-{}.npy".format(N, DISTRIBUTION)
+        # np.save(file_name, mu_gt)
         file_name = "./results/{}-{}.npy".format(N, DISTRIBUTION)
-        np.save(file_name, mu_gt)
+        mu_gt = np.load(file_name)
 
         for BASELINE in BASELINES:
             for r in range(REPEAT_T[BASELINE][0], REPEAT_T[BASELINE][1]):
