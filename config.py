@@ -1,10 +1,10 @@
 import numpy as np
 
 # Define hyperparameters
-Ns = [10, 50]
+Ns = [50]
 DISTRIBUTIONS = ["Gamma", "Gaussian", "Bernoulli", "Poisson"]
-# BASELINES = ["TS", "TSGreedy","KL_UCB",  "KL_UCB_plus_plus", "ExpTS", "ExpTS_plus", "MOTS"]
-BASELINES = ["ExpTS_plus"]
+BASELINES = ["KL_UCB",  "KL_UCB_plus_plus","TS", "MOTS", "ExpTS", "ExpTS_plus", "TSGreedy"]
+# BASELINES = ["ExpTS"]
 PROBS_fn = lambda n: [1/n]
 T = pow(10, 4)
 PERIOD = 100
@@ -22,7 +22,7 @@ REPEAT_T = {
 
 NAME_IN_PLOT = {
     "TS": "TS",
-    "TSGreedy": "(1/K)-TS",
+    "TSGreedy": "ε-TS",
     "MOTS": "MOTS",
     "KL_UCB": "KL-UCB",
     "KL_UCB_plus_plus": "KL-UCB++",
