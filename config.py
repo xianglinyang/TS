@@ -1,10 +1,10 @@
 import numpy as np
 
 # Define hyperparameters
-Ns = [50]
+Ns = [10]
 DISTRIBUTIONS = ["Gamma", "Gaussian", "Bernoulli", "Poisson"]
-BASELINES = ["KL_UCB",  "KL_UCB_plus_plus","TS", "MOTS", "ExpTS", "ExpTS_plus", "TSGreedy"]
-# BASELINES = ["ExpTS"]
+# BASELINES = ["KL_UCB",  "KL_UCB_plus_plus","TS", "MOTS", "ExpTS", "ExpTS_plus", "TSGreedy"]
+BASELINES = ["ExpTS"]
 PROBS_fn = lambda n: [1/n]
 T = pow(10, 4)
 PERIOD = 100

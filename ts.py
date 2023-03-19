@@ -1,7 +1,7 @@
 import numpy as np
 import sympy as sy
 from tqdm import tqdm
-from scipy.optimize import least_squares
+from scipy.optimize import least_squares, newton
 
 
 def kl_div(distribution, mu, x):
@@ -26,8 +26,10 @@ def find_mu(x, x_min, kl, upper, T, distribution):
     func_np = sy.lambdify(x, T*kl-upper, modules=['numpy'])
     if distribution == "Bernoulli":
         solution = least_squares(func_np, (x_min+0.01), bounds = ((x_min), (1))).x
+        # solution = newton(func_np, x)
     elif distribution == "Gamma" or distribution == "Gaussian" or distribution == "Poisson":
         solution = least_squares(func_np, (x_min+0.01), bounds = ((x_min), (np.inf))).x
+        # solution = newton(func_np, x)
     else:
         raise NotImplementedError
     return solution[0]
@@ -277,14 +279,14 @@ class ExpTS(TS):
                 # in case 0
                 reward = self._pull_arm(i)+1
                 self._update_posterior(i, reward)
-                reward = self._pull_arm(i)+1
-                self._update_posterior(i, reward)
+                # reward = self._pull_arm(i)+1
+                # self._update_posterior(i, reward)
         else:
             for i in range(self.N):
                 reward = self._pull_arm(i)
                 self._update_posterior(i, reward)
-                reward = self._pull_arm(i)
-                self._update_posterior(i, reward)
+                # reward = self._pull_arm(i)
+                # self._update_posterior(i, reward)
         print("Initialize arms...")
     
     def _solve_theta(self, i):
@@ -296,7 +298,7 @@ class ExpTS(TS):
         if y>= .5:
             # equivalent
             # thetas[i] = max(sy.solve(1-0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
-            func_np = sy.lambdify(x, sy.log(0.5/(1-y))/(self.T[i]-1)-kl, modules=['numpy'])
+            func_np = sy.lambdify(x, sy.log(0.5/(1-y))/(self.T[i]-0.99)-kl, modules=['numpy'])
             if self.distribution == "Bernoulli":
                 solution = least_squares(func_np, ((self.mu[i]+1)/2.0), bounds = ((self.mu[i]), (1))).x
             elif self.distribution == "Poisson" or self.distribution== "Gamma":
@@ -308,7 +310,7 @@ class ExpTS(TS):
         else:
             # equivalent
             # thetas[i] = min(sy.solve(0.5*sy.exp(-(self.T[i]-1)*kl)-y, x))
-            func_np = sy.lambdify(x, sy.log(0.5/y)/(self.T[i]-1)-kl, modules=['numpy'])
+            func_np = sy.lambdify(x, sy.log(0.5/y)/(self.T[i]-0.99)-kl, modules=['numpy'])
             if self.distribution == "Bernoulli":
                 solution =least_squares(func_np, (self.mu[i]*0.5), bounds = ((0), (self.mu[i]))).x
             elif self.distribution == "Poisson" or self.distribution== "Gamma":
@@ -330,7 +332,7 @@ class ExpTS(TS):
         regrets_plot = np.zeros(int(T/period))
         regret = 0
 
-        start = 2*self.N + 1
+        start = self.N + 1
         # for t in tqdm(range(start, T+1, 1)):
         for t in range(start, T+1, 1):
             i = self._choose_arm()

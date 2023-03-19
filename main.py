@@ -1,9 +1,10 @@
 import numpy as np
 import time
-from config import *
+from config import BASELINES, Ns, DISTRIBUTIONS
 from ts import *
 from synthetic import SyntheticSimpleDataset
 import argparse
+import random
 
 def main():
     parser = argparse.ArgumentParser()
@@ -12,6 +13,7 @@ def main():
     parser.add_argument('--distribution', type=str, choices=DISTRIBUTIONS)
     parser.add_argument("--period", type=int)
     parser.add_argument("--prob", type=float, default=1.0)
+    parser.add_argument("--t", type=int)
     args = parser.parse_args()
     # get hyperparameters
     BASELINE = args.baseline
@@ -19,6 +21,7 @@ def main():
     DISTRIBUTION = args.distribution
     PERIOD = args.period
     PROB = args.prob
+    T = args.t
     print("Load hyperparameters...")
 
     # sd = SyntheticSimpleDataset(N, DISTRIBUTION)
@@ -51,7 +54,8 @@ def main():
     return regret_line, round(t_e-t_s, 3)
 
 
-def run(mu_gt, BASELINE, N, DISTRIBUTION, PERIOD, PROB, REPEAT_TIME):
+def run(mu_gt, BASELINE, N, DISTRIBUTION, PERIOD, PROB, T, REPEAT_TIME, FOLDER="results"):
+    np.random.seed(REPEAT_TIME)
     if BASELINE == "TS":
         ts = TS(N, mu_gt, DISTRIBUTION)
     elif BASELINE == "KL_UCB_plus_plus":
@@ -71,9 +75,8 @@ def run(mu_gt, BASELINE, N, DISTRIBUTION, PERIOD, PROB, REPEAT_TIME):
         raise NotImplementedError
     _, regret_line = ts.regret(T, PERIOD)
 
-    file_name = "./results/{}-{}-{}-{}-{}.npy".format(BASELINE, N, DISTRIBUTION, round(PROB, 2), REPEAT_TIME)
+    file_name = "./{}/{}-{}-{}-{}-{}-{}.npy".format(FOLDER, BASELINE, N, DISTRIBUTION, T, round(PROB, 2), REPEAT_TIME)
     np.save(file_name, regret_line)
-    # print(BASELINE, N, DISTRIBUTION, PERIOD, PROB, round(t_e-t_s, 2))
 
 
 if __name__ == "__main__":

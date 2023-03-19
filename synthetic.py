@@ -50,5 +50,35 @@ class SyntheticSimpleDataset:
         return mu
 
 
+class RebuttalDataset:
+    def __init__(self, N, distribution) -> None:
+        self.distribution = distribution
+        self.N = N
+    
+    def generate_dataset(self):
+        if self.N == 10:
+            mu = np.ones(10)
+            if self.distribution == "Bernoulli" or self.distribution == "Gaussian":
+                mu = mu*0.2
+                mu[0] = 0.3
+            else:
+                raise NotImplementedError
+            return mu
+        elif self.N == 500:
+            if self.distribution == "Gaussian":
+                mu = np.zeros(self.N)
+                mu[0] = 2
+            elif self.distribution == "Bernoulli":
+                mu = np.ones(self.N)
+                mu = mu*0.25
+                mu[0] = 0.75
+            else:
+                raise NotImplementedError
+            return mu
+        else:
+            raise NotImplementedError
+
+
+
             
         
