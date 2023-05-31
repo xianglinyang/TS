@@ -62,7 +62,9 @@ class RebuttalDataset:
                 mu = mu*0.2
                 mu[0] = 0.3
             else:
-                raise NotImplementedError
+                mu = mu*0.2
+                mu[0] = 0.3
+                # raise NotImplementedError
             return mu
         elif self.N == 500:
             if self.distribution == "Gaussian":
