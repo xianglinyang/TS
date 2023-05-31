@@ -2,3 +2,6 @@ __pycache__/*
 results/*
 plot_results/*
 rebuttal_results/*
+rebuttal_plot_results/*
+epsilon_results/*
+epsilon_plot_results/*
